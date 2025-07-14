@@ -1,36 +1,35 @@
-# MT5 CRM Backend API
+# MT5 CRM Backend
 
-This is the backend API server for the MT5 CRM platform. It handles all MT5 integration, user authentication, trading operations, and payment processing.
+Backend API server for the MT5 CRM platform providing MT5 account management, trading operations, and user management.
 
 ## Features
 
-- **MT5 Integration**: Complete integration with MT5 trading server
-- **Authentication**: JWT-based authentication system
-- **Trading Operations**: Real-time trading operations and position management
-- **Payment Processing**: Stripe integration for deposits and withdrawals
-- **Admin API**: Comprehensive admin endpoints for platform management
-- **Security**: Rate limiting, CORS, helmet security headers
-- **Logging**: Structured logging with Winston
+- **MT5 Integration**: Direct integration with MT5 server API
+- **Account Management**: Create, update, and manage MT5 accounts
+- **Balance Operations**: Handle deposits and withdrawals
+- **Position Tracking**: Real-time position monitoring
+- **Trade History**: Complete trading history access
+- **Security**: JWT authentication, rate limiting, CORS protection
 
 ## Quick Start
 
-1. **Install dependencies:**
+1. **Install Dependencies**:
    \`\`\`bash
    npm install
    \`\`\`
 
-2. **Configure environment:**
+2. **Environment Setup**:
    \`\`\`bash
    cp .env.example .env
-   # Edit .env with your configuration
+   # Edit .env with your actual configuration
    \`\`\`
 
-3. **Start development server:**
+3. **Development**:
    \`\`\`bash
    npm run dev
    \`\`\`
 
-4. **Build for production:**
+4. **Production Build**:
    \`\`\`bash
    npm run build
    npm start
@@ -38,34 +37,41 @@ This is the backend API server for the MT5 CRM platform. It handles all MT5 inte
 
 ## API Endpoints
 
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/mt5-token` - MT5 authentication
+### Account Management
+- `GET /api/account/test-connection` - Test MT5 connection
+- `POST /api/account/create-live-account` - Create new MT5 account
+- `GET /api/account/info/:login` - Get account information
+- `GET /api/account/positions/:login` - Get account positions
+- `POST /api/account/balance-operation` - Perform balance operations
 
-### Trading
-- `GET /api/trading/position/:loginId` - Get positions
-- `POST /api/trading/history` - Get trade history
-- `GET /api/trading/symbol/:symbol` - Get symbol info
-
-### Admin
-- `GET /api/admin/dashboard-stats` - Dashboard statistics
-- `GET /api/admin/users` - User management
-- `POST /api/admin/balance-operation` - Balance operations
-
-### Payments
-- `POST /api/payment/create-payment-intent` - Create Stripe payment
-- `POST /api/payment/webhook` - Stripe webhook handler
-
-## Deployment
-
-The backend can be deployed to any Node.js hosting platform:
-
-- **Vercel**: `vercel --prod`
-- **Heroku**: `git push heroku main`
-- **Docker**: Use the included Dockerfile
-- **VPS**: PM2 or systemd service
+### Health Check
+- `GET /health` - Server health status
 
 ## Environment Variables
 
 See `.env.example` for all required environment variables.
+
+## MT5 Configuration
+
+The backend connects to your MT5 server using the provided credentials:
+- **Server**: 173.208.156.141:6701
+- **Manager ID**: 1146
+- **Trading Server**: 86.104.251.148:443
+
+## Development
+
+- **TypeScript**: Full TypeScript support
+- **Hot Reload**: Development server with hot reload
+- **Linting**: ESLint configuration included
+- **Testing**: Jest testing framework ready
+
+## Security
+
+- **Helmet**: Security headers
+- **CORS**: Cross-origin resource sharing
+- **Rate Limiting**: Request rate limiting
+- **Input Validation**: Request validation middleware
+
+## Logging
+
+Comprehensive logging for debugging and monitoring MT5 API interactions.

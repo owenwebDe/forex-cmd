@@ -1,266 +1,382 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wallet, TrendingUp, Activity, DollarSign, ArrowUpRight, ArrowDownRight, RefreshCw } from "lucide-react"
-import DashboardLayout from "@/components/Layout/DashboardLayout"
-import { apiClient } from "@/lib/api"
-import { toast } from "react-hot-toast"
-import type { DashboardStats, Position, MT5Account } from "@/types"
+import Link from "next/link"
+
+interface AccountInfo {
+  login: number
+  name: string
+  email: string
+  group: string
+  leverage: number
+  balance: number
+  equity: number
+  margin: number
+  freeMargin: number
+  marginLevel: number
+  server: string
+}
+
+interface Position {
+  ticket: number
+  symbol: string
+  type: number
+  volume: number
+  openPrice: number
+  currentPrice: number
+  profit: number
+  swap: number
+  commission: number
+  openTime: string
+}
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [account, setAccount] = useState<MT5Account | null>(null)
+  const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null)
   const [positions, setPositions] = useState<Position[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const fetchDashboardData = async () => {
+  // Mock login ID for demo - in real app this would come from authentication
+  const loginId = 12345
+
+  useEffect(() => {
+    fetchAccountData()
+  }, [])
+
+  const fetchAccountData = async () => {
     try {
-      const [accountResponse, balanceResponse, positionsResponse] = await Promise.all([
-        apiClient.getMT5AccountInfo(),
-        apiClient.getAccountBalance(),
-        apiClient.getPositions(),
-      ])
+      setIsLoading(true)
 
-      if (accountResponse.success) {
-        setAccount(accountResponse.data)
+      // Fetch account info
+      const accountResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/account/info/${loginId}`)
+      if (accountResponse.ok) {
+        const accountResult = await accountResponse.json()
+        if (accountResult.success) {
+          setAccountInfo(accountResult.data)
+        }
       }
 
-      if (balanceResponse.success) {
-        setStats(balanceResponse.data)
+      // Fetch positions
+      const positionsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/account/positions/${loginId}`)
+      if (positionsResponse.ok) {
+        const positionsResult = await positionsResponse.json()
+        if (positionsResult.success) {
+          setPositions(positionsResult.data)
+        }
       }
-
-      if (positionsResponse.success) {
-        setPositions(positionsResponse.positions || [])
-      }
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error)
-      toast.error("Failed to load dashboard data")
+    } catch (err) {
+      setError("Failed to load account data")
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      setIsLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchDashboardData()
-
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchDashboardData, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleRefresh = () => {
-    setRefreshing(true)
-    fetchDashboardData()
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount)
   }
 
-  if (loading) {
+  const getPositionType = (type: number) => {
+    return type === 0 ? "BUY" : "SELL"
+  }
+
+  const getPositionTypeColor = (type: number) => {
+    return type === 0 ? "text-green-600" : "text-red-600"
+  }
+
+  if (isLoading) {
     return (
-      <DashboardLayout>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="card animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/3"></div>
-              </div>
-            ))}
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="spinner w-8 h-8 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            {account && (
-              <p className="text-sm text-gray-600">
-                MT5 Account: {account.loginId} | Group: {account.group}
-              </p>
-            )}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-2xl font-bold text-gray-900">MT5 Dashboard</h1>
+            <nav className="flex space-x-4">
+              <Link href="/deposit" className="btn-primary">
+                Deposit
+              </Link>
+              <Link href="/create-account" className="btn-secondary">
+                New Account
+              </Link>
+            </nav>
           </div>
-          <button onClick={handleRefresh} disabled={refreshing} className="btn-secondary flex items-center space-x-2">
-            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            <span>Refresh</span>
-          </button>
         </div>
+      </header>
 
-        {/* Stats Cards */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard title="Balance" value={`$${stats.balance.toLocaleString()}`} icon={Wallet} color="blue" />
-            <StatCard title="Equity" value={`$${stats.equity.toLocaleString()}`} icon={DollarSign} color="green" />
-            <StatCard title="Margin" value={`$${stats.margin.toLocaleString()}`} icon={TrendingUp} color="yellow" />
-            <StatCard
-              title="Free Margin"
-              value={`$${stats.freeMargin.toLocaleString()}`}
-              icon={Activity}
-              color="purple"
-            />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800">{error}</p>
           </div>
         )}
 
-        {/* Account Status */}
-        {account && (
-          <div className="card">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Account Name</p>
-                <p className="font-medium">{account.name}</p>
+        {/* Account Overview */}
+        {accountInfo && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Overview</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Balance</p>
+                    <p className="text-2xl font-semibold text-gray-900">{formatCurrency(accountInfo.balance)}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Leverage</p>
-                <p className="font-medium">1:{account.leverage}</p>
+
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Equity</p>
+                    <p className="text-2xl font-semibold text-gray-900">{formatCurrency(accountInfo.equity)}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-600">Status</p>
-                <span className={`badge ${account.enabled ? "badge-success" : "badge-danger"}`}>
-                  {account.enabled ? "Active" : "Disabled"}
-                </span>
+
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Free Margin</p>
+                    <p className="text-2xl font-semibold text-gray-900">{formatCurrency(accountInfo.freeMargin)}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-500">Margin Level</p>
+                    <p className="text-2xl font-semibold text-gray-900">{accountInfo.marginLevel.toFixed(2)}%</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Account Details */}
+            <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Account Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Login</p>
+                  <p className="text-gray-900">{accountInfo.login}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Name</p>
+                  <p className="text-gray-900">{accountInfo.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Email</p>
+                  <p className="text-gray-900">{accountInfo.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Group</p>
+                  <p className="text-gray-900">{accountInfo.group}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Leverage</p>
+                  <p className="text-gray-900">1:{accountInfo.leverage}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Server</p>
+                  <p className="text-gray-900">{accountInfo.server}</p>
+                </div>
               </div>
             </div>
           </div>
         )}
 
         {/* Open Positions */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Open Positions</h2>
-            <span className="badge badge-info">{positions.length} positions</span>
-          </div>
-
-          {positions.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Symbol</th>
-                    <th>Type</th>
-                    <th>Volume</th>
-                    <th>Open Price</th>
-                    <th>Current Price</th>
-                    <th>Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {positions.map((position) => (
-                    <tr key={position.ticket}>
-                      <td className="font-medium">{position.symbol}</td>
-                      <td>
-                        <span className={`badge ${position.type === "buy" ? "badge-success" : "badge-danger"}`}>
-                          {position.type.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>{position.volume}</td>
-                      <td>{position.openPrice}</td>
-                      <td>{position.currentPrice}</td>
-                      <td>
-                        <span
-                          className={`flex items-center ${position.profit >= 0 ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {position.profit >= 0 ? (
-                            <ArrowUpRight className="h-4 w-4 mr-1" />
-                          ) : (
-                            <ArrowDownRight className="h-4 w-4 mr-1" />
-                          )}
-                          ${Math.abs(position.profit).toLocaleString()}
-                        </span>
-                      </td>
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Open Positions</h2>
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            {positions.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ticket
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Symbol
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Volume
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Open Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Current Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Profit
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No open positions</p>
-            </div>
-          )}
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {positions.map((position) => (
+                      <tr key={position.ticket} className="table-row">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{position.ticket}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {position.symbol}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={`font-medium ${getPositionTypeColor(position.type)}`}>
+                            {getPositionType(position.type)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {position.volume.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {position.openPrice.toFixed(5)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {position.currentPrice.toFixed(5)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <span className={position.profit >= 0 ? "text-green-600" : "text-red-600"}>
+                            {formatCurrency(position.profit)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19V6l12-1v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-1c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-1"
+                  />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No open positions</h3>
+                <p className="mt-1 text-sm text-gray-500">You don't have any open trading positions at the moment.</p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <QuickActionCard
-            title="Deposit Funds"
-            description="Add money to your trading account"
-            href="/deposit"
-            icon={ArrowUpRight}
-            color="green"
-          />
-          <QuickActionCard
-            title="Withdraw Funds"
-            description="Request withdrawal from your account"
-            href="/withdraw"
-            icon={ArrowDownRight}
-            color="red"
-          />
-          <QuickActionCard
-            title="View Transactions"
-            description="Check your transaction history"
-            href="/transactions"
-            icon={Activity}
-            color="blue"
-          />
-        </div>
-      </div>
-    </DashboardLayout>
-  )
-}
+          <Link href="/deposit" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Deposit Funds</h3>
+                <p className="text-sm text-gray-500">Add money to your trading account</p>
+              </div>
+            </div>
+          </Link>
 
-function StatCard({ title, value, icon: Icon, color }: any) {
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-600",
-    green: "bg-green-50 text-green-600",
-    yellow: "bg-yellow-50 text-yellow-600",
-    purple: "bg-purple-50 text-purple-600",
-  }
+          <Link href="/withdraw" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Withdraw Funds</h3>
+                <p className="text-sm text-gray-500">Request a withdrawal from your account</p>
+              </div>
+            </div>
+          </Link>
 
-  return (
-    <div className="card">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <Link href="/history" className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Trading History</h3>
+                <p className="text-sm text-gray-500">View your complete trading history</p>
+              </div>
+            </div>
+          </Link>
         </div>
-        <div className={`p-3 rounded-full ${colorClasses[color]}`}>
-          <Icon className="h-6 w-6" />
-        </div>
-      </div>
+      </main>
     </div>
-  )
-}
-
-function QuickActionCard({ title, description, href, icon: Icon, color }: any) {
-  const colorClasses = {
-    green: "border-green-200 hover:border-green-300",
-    red: "border-red-200 hover:border-red-300",
-    blue: "border-blue-200 hover:border-blue-300",
-  }
-
-  return (
-    <a
-      href={href}
-      className={`block p-6 bg-white rounded-lg border-2 transition-colors duration-200 ${colorClasses[color]}`}
-    >
-      <div className="flex items-center space-x-3">
-        <Icon className="h-8 w-8 text-gray-600" />
-        <div>
-          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-          <p className="text-sm text-gray-600">{description}</p>
-        </div>
-      </div>
-    </a>
   )
 }

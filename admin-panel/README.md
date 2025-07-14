@@ -1,71 +1,105 @@
 # MT5 CRM Admin Panel
 
-Professional admin dashboard for managing the MT5 CRM platform. Built with Next.js, TypeScript, and Tailwind CSS.
+Admin panel for managing MT5 CRM platform users, accounts, and system monitoring.
 
 ## Features
 
-- **Dashboard Overview**: Real-time statistics and system monitoring
-- **User Management**: Complete CRUD operations for users and MT5 accounts
-- **Trading Management**: Live position monitoring and trade execution
-- **Balance Operations**: Deposits, withdrawals, credits, and bonuses
-- **System Logs**: Activity monitoring and error tracking
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
+- **User Management**: Create, view, and manage user accounts
+- **MT5 Account Management**: Monitor and manage MT5 trading accounts
+- **Position Monitoring**: Real-time position tracking across all accounts
+- **Balance Operations**: Process deposits and withdrawals
+- **System Monitoring**: MT5 server connection status and health checks
+- **Analytics Dashboard**: Trading statistics and performance metrics
+- **Responsive Design**: Mobile-friendly admin interface
 
 ## Quick Start
 
-1. **Install dependencies:**
+1. **Install Dependencies**:
    \`\`\`bash
    npm install
    \`\`\`
 
-2. **Configure environment:**
+2. **Environment Setup**:
    \`\`\`bash
    cp .env.local.example .env.local
-   # Edit .env.local with your backend API URL
+   # Edit .env.local with your configuration
    \`\`\`
 
-3. **Start development server:**
+3. **Development**:
    \`\`\`bash
    npm run dev
    \`\`\`
 
-4. **Access admin panel:**
-   - URL: http://localhost:3002
-   - Login with admin credentials
+4. **Production Build**:
+   \`\`\`bash
+   npm run build
+   npm start
+   \`\`\`
 
-## Project Structure
+## Pages
 
-\`\`\`
-src/
-├── app/                 # Next.js app router pages
-├── components/          # React components
-│   ├── Layout/         # Layout components
-│   ├── Dashboard/      # Dashboard components
-│   ├── Users/          # User management
-│   ├── Trading/        # Trading components
-│   └── UI/             # Reusable UI components
-├── lib/                # Utilities and API client
-├── types/              # TypeScript type definitions
-└── styles/             # Global styles
-\`\`\`
-
-## Key Components
-
-- **AdminLayout**: Main layout with navigation and authentication
-- **DashboardStats**: Real-time statistics cards
-- **UserManagement**: User CRUD operations with MT5 integration
-- **PositionsTable**: Live trading positions monitoring
-- **BalanceOperations**: Financial operations management
-
-## Deployment
-
-The admin panel can be deployed to:
-
-- **Vercel**: `vercel --prod`
-- **Netlify**: Connect GitHub repository
-- **Docker**: Use included Dockerfile
-- **Static hosting**: `npm run build && npm run export`
+- `/` - Admin dashboard with system overview
+- `/users` - User management interface
+- `/accounts` - MT5 account management
+- `/positions` - Live position monitoring
+- `/transactions` - Transaction history and management
+- `/settings` - System configuration
+- `/login` - Admin authentication
 
 ## Environment Variables
 
-See `.env.local.example` for all configuration options.
+See `.env.local.example` for all required environment variables:
+
+- `NEXT_PUBLIC_API_URL` - Backend API URL
+- `NEXT_PUBLIC_APP_NAME` - Application name
+- `NEXT_PUBLIC_APP_URL` - Admin panel URL
+- `NEXT_PUBLIC_ADMIN_SECRET` - Admin authentication secret
+- `NEXT_PUBLIC_MT5_SERVER_NAME` - MT5 server name
+- `NEXT_PUBLIC_MT5_SERVER_IP` - MT5 server IP
+- `NEXT_PUBLIC_MT5_API_URL` - MT5 API URL
+
+## Technology Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **HTTP Client**: Axios
+- **Charts**: Recharts
+- **Forms**: React Hook Form with Zod validation
+- **Icons**: Lucide React
+- **Notifications**: Sonner
+
+## Security
+
+- Admin authentication required
+- Role-based access control
+- Secure API communication
+- Input validation and sanitization
+
+## Features
+
+### User Management
+- View all registered users
+- Create new user accounts
+- Edit user information
+- Suspend/activate accounts
+- View user MT5 accounts
+
+### MT5 Account Management
+- Monitor all MT5 accounts
+- View account details and balances
+- Process balance operations
+- Account status management
+- Trading activity monitoring
+
+### Position Monitoring
+- Real-time position tracking
+- Profit/loss monitoring
+- Risk management alerts
+- Position history
+
+### System Monitoring
+- MT5 server connection status
+- API health checks
+- System performance metrics
+- Error logging and monitoring
