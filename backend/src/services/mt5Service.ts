@@ -1,416 +1,229 @@
 import axios, { type AxiosResponse } from "axios"
-import { logger } from "../utils/logger"
-import { MT5_CONFIG, ACCOUNT_GROUPS } from "../config/mt5"
+import { MT5_CONFIG, ACCOUNT_GROUPS } from "../config/mt5.js"
 
-interface MT5AccountData {
-  login?: number
+export interface MT5Account {
+  login: number
+  password: string
   name: string
   email: string
   group: string
   leverage: number
   balance: number
-  mPassword: string
-  iPassword: string
-  phone?: string
-  country?: string
-  city?: string
-  state?: string
-  zipCode?: string
-  address?: string
+  equity: number
+  margin: number
+  freeMargin: number
+  marginLevel: number
+  server: string
 }
 
-interface MT5Response {
-  success: boolean
-  data?: any
-  error?: string
-  message?: string
-  login?: number
-  loginId?: number
+export interface CreateAccountRequest {
+  name: string
+  email: string
+  phone: string
+  country: string
+  city: string
+  address: string
+  zipCode: string
+  leverage: number
+  accountType: "demo" | "live"
+  initialDeposit?: number
+}
+
+export interface MT5Position {
+  ticket: number
+  symbol: string
+  type: number
+  volume: number
+  openPrice: number
+  currentPrice: number
+  profit: number
+  swap: number
+  commission: number
+  openTime: string
+}
+
+export interface BalanceOperation {
+  login: number
+  amount: number
+  comment: string
+  type: "deposit" | "withdrawal"
 }
 
 class MT5Service {
   private baseURL: string
-  private managerId: number
-  private managerPassword: string
-  private serverIp: string
+  private timeout: number
 
   constructor() {
     this.baseURL = MT5_CONFIG.API_URL
-    this.managerId = MT5_CONFIG.MANAGER_ID
-    this.managerPassword = MT5_CONFIG.MANAGER_PASSWORD
-    this.serverIp = MT5_CONFIG.SERVER_IP
+    this.timeout = MT5_CONFIG.TIMEOUT
   }
 
-  private async makeRequest(endpoint: string, data: any, method = "POST"): Promise<any> {
+  private async makeRequest<T>(endpoint: string, data?: any, method: "GET" | "POST" | "PUT" = "POST"): Promise<T> {
     try {
       const config = {
         method,
         url: `${this.baseURL}${endpoint}`,
+        timeout: this.timeout,
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        data: {
-          mngId: this.managerId,
-          pwd: this.managerPassword,
-          srvIp: this.serverIp,
-          ...data,
-        },
-        timeout: MT5_CONFIG.TIMEOUT,
+        ...(data && { data }),
       }
 
-      logger.info(`MT5 API Request to ${endpoint}:`, {
-        ...config.data,
-        pwd: "[HIDDEN]",
-        mPassword: "[HIDDEN]",
-        iPassword: "[HIDDEN]",
-      })
-
-      const response: AxiosResponse = await axios(config)
-
-      logger.info(`MT5 API Response from ${endpoint}:`, response.data)
-
+      const response: AxiosResponse<T> = await axios(config)
       return response.data
     } catch (error: any) {
-      logger.error(`MT5 API Error for ${endpoint}:`, {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      })
-      throw error
+      console.error(`MT5 API Error [${endpoint}]:`, error.response?.data || error.message)
+      throw new Error(`MT5 API Error: ${error.response?.data?.message || error.message}`)
     }
   }
 
-  async createAccount(accountData: MT5AccountData) {
+  async testConnection(): Promise<boolean> {
     try {
-      logger.info("Creating MT5 account with data:", {
-        ...accountData,
-        mPassword: "[HIDDEN]",
-        iPassword: "[HIDDEN]",
-      })
+      // Test connection by trying to get server info
+      await this.makeRequest("/api/Server/Info", null, "GET")
+      return true
+    } catch (error) {
+      console.error("MT5 Connection Test Failed:", error)
+      return false
+    }
+  }
 
-      const requestData = {
-        name: accountData.name,
-        email: accountData.email,
-        group: accountData.group || ACCOUNT_GROUPS.DEMO,
-        leverage: accountData.leverage || MT5_CONFIG.DEFAULT_LEVERAGE,
-        balance: accountData.balance || MT5_CONFIG.DEFAULT_BALANCE,
-        mPassword: accountData.mPassword,
-        iPassword: accountData.iPassword,
-        phone: accountData.phone || "",
-        country: accountData.country || "",
-        city: accountData.city || "",
-        state: accountData.state || "",
-        zipCode: accountData.zipCode || "",
-        address: accountData.address || "",
-      }
+  async createAccount(request: CreateAccountRequest): Promise<MT5Account> {
+    const accountData = {
+      mngId: MT5_CONFIG.MANAGER_ID,
+      pwd: MT5_CONFIG.MANAGER_PASSWORD,
+      srvIp: MT5_CONFIG.SERVER_IP,
+      name: request.name,
+      email: request.email,
+      phone: request.phone,
+      country: request.country,
+      city: request.city,
+      address: request.address,
+      zipCode: request.zipCode,
+      group: request.accountType === "demo" ? ACCOUNT_GROUPS.DEMO : ACCOUNT_GROUPS.LIVE_STANDARD,
+      leverage: request.leverage,
+      balance: request.initialDeposit || (request.accountType === "demo" ? MT5_CONFIG.DEFAULT_BALANCE : 0),
+      currency: "USD",
+      comment: `Account created via CRM - ${new Date().toISOString()}`,
+    }
 
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.CREATE_ACCOUNT, requestData)
+    try {
+      const response = await this.makeRequest<any>(MT5_CONFIG.ENDPOINTS.CREATE_ACCOUNT, accountData)
 
-      if (response.success !== false && (response.login || response.loginId)) {
+      if (response.success && response.data) {
         return {
-          success: true,
-          loginId: response.login || response.loginId,
-          login: response.login || response.loginId,
-          groupName: requestData.group,
-          leverage: requestData.leverage,
-          balance: requestData.balance,
-          server: this.serverIp,
-          mPassword: requestData.mPassword,
-          iPassword: requestData.iPassword,
-          name: requestData.name,
-          email: requestData.email,
+          login: response.data.login,
+          password: response.data.password,
+          name: request.name,
+          email: request.email,
+          group: accountData.group,
+          leverage: request.leverage,
+          balance: accountData.balance,
+          equity: accountData.balance,
+          margin: 0,
+          freeMargin: accountData.balance,
+          marginLevel: 0,
+          server: MT5_CONFIG.SERVER_NAME,
         }
       } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Unknown error creating account",
-        }
+        throw new Error(response.message || "Failed to create MT5 account")
       }
     } catch (error: any) {
-      logger.error("Error in createAccount:", error)
-      return {
-        success: false,
-        error:
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to create MT5 account",
-      }
+      console.error("Create Account Error:", error)
+      throw new Error(`Failed to create MT5 account: ${error.message}`)
     }
   }
 
-  async getAccountInfo(loginId: number) {
+  async getAccount(login: number): Promise<MT5Account | null> {
     try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.GET_ACCOUNT, {
-        login: loginId,
+      const response = await this.makeRequest<any>(MT5_CONFIG.ENDPOINTS.GET_ACCOUNT, {
+        mngId: MT5_CONFIG.MANAGER_ID,
+        pwd: MT5_CONFIG.MANAGER_PASSWORD,
+        srvIp: MT5_CONFIG.SERVER_IP,
+        login: login,
       })
 
-      if (response.success !== false) {
+      if (response.success && response.data) {
         return {
-          success: true,
-          data: {
-            loginId: response.login || loginId,
-            login: response.login || loginId,
-            name: response.name,
-            email: response.email,
-            group: response.group,
-            leverage: response.leverage,
-            balance: response.balance,
-            equity: response.equity,
-            margin: response.margin,
-            freeMargin: response.freeMargin || response.free_margin,
-            marginLevel: response.marginLevel || response.margin_level,
-            enabled: response.enabled,
-            server: this.serverIp,
-            currency: response.currency || "USD",
-            credit: response.credit || 0,
-            profit: response.profit || 0,
-          },
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to get account info",
+          login: response.data.login,
+          password: response.data.password || "****",
+          name: response.data.name,
+          email: response.data.email,
+          group: response.data.group,
+          leverage: response.data.leverage,
+          balance: response.data.balance,
+          equity: response.data.equity,
+          margin: response.data.margin,
+          freeMargin: response.data.freeMargin,
+          marginLevel: response.data.marginLevel,
+          server: MT5_CONFIG.SERVER_NAME,
         }
       }
-    } catch (error: any) {
-      logger.error("Error in getAccountInfo:", error)
-      return {
-        success: false,
-        error:
-          error.response?.data?.error || error.response?.data?.message || error.message || "Failed to get account info",
-      }
+      return null
+    } catch (error) {
+      console.error("Get Account Error:", error)
+      return null
     }
   }
 
-  async getBalance(loginId: number) {
+  async getPositions(login: number): Promise<MT5Position[]> {
     try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.GET_BALANCE, {
-        login: loginId,
+      const response = await this.makeRequest<any>(MT5_CONFIG.ENDPOINTS.GET_POSITIONS, {
+        mngId: MT5_CONFIG.MANAGER_ID,
+        pwd: MT5_CONFIG.MANAGER_PASSWORD,
+        srvIp: MT5_CONFIG.SERVER_IP,
+        login: login,
       })
 
-      if (response.success !== false) {
-        return {
-          success: true,
-          balance: response.balance || 0,
-          equity: response.equity || 0,
-          margin: response.margin || 0,
-          freeMargin: response.freeMargin || response.free_margin || 0,
-          marginLevel: response.marginLevel || response.margin_level || 0,
-          credit: response.credit || 0,
-          profit: response.profit || 0,
-          currency: response.currency || "USD",
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to get balance",
-        }
+      if (response.success && response.data) {
+        return response.data.map((pos: any) => ({
+          ticket: pos.ticket,
+          symbol: pos.symbol,
+          type: pos.type,
+          volume: pos.volume,
+          openPrice: pos.openPrice,
+          currentPrice: pos.currentPrice,
+          profit: pos.profit,
+          swap: pos.swap,
+          commission: pos.commission,
+          openTime: pos.openTime,
+        }))
       }
-    } catch (error: any) {
-      logger.error("Error in getBalance:", error)
-      return {
-        success: false,
-        error: error.response?.data?.error || error.response?.data?.message || error.message || "Failed to get balance",
-      }
+      return []
+    } catch (error) {
+      console.error("Get Positions Error:", error)
+      return []
     }
   }
 
-  async performBalanceOperation(loginId: number, type: string, amount: number, comment: string) {
+  async performBalanceOperation(operation: BalanceOperation): Promise<boolean> {
     try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.BALANCE_OPERATION, {
-        login: loginId,
-        type: type, // "DEPOSIT" or "WITHDRAWAL"
-        amount: amount,
-        comment: comment || `${type} operation`,
+      const response = await this.makeRequest<any>(MT5_CONFIG.ENDPOINTS.BALANCE_OPERATION, {
+        mngId: MT5_CONFIG.MANAGER_ID,
+        pwd: MT5_CONFIG.MANAGER_PASSWORD,
+        srvIp: MT5_CONFIG.SERVER_IP,
+        login: operation.login,
+        amount: operation.type === "withdrawal" ? -Math.abs(operation.amount) : Math.abs(operation.amount),
+        comment: operation.comment,
+        type: operation.type === "deposit" ? 2 : 3, // MT5 operation types
       })
 
-      if (response.success !== false) {
-        return {
-          success: true,
-          data: response,
-          newBalance: response.balance,
-          transactionId: response.transactionId || response.ticket,
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to perform balance operation",
-        }
-      }
-    } catch (error: any) {
-      logger.error("Error in performBalanceOperation:", error)
-      return {
-        success: false,
-        error:
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to perform balance operation",
-      }
+      return response.success === true
+    } catch (error) {
+      console.error("Balance Operation Error:", error)
+      return false
     }
   }
 
-  async getPositions(loginId: number) {
+  async getAccountBalance(login: number): Promise<number> {
     try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.GET_POSITIONS, {
-        login: loginId,
-      })
-
-      if (response.success !== false) {
-        const positions = response.positions || response.data || response || []
-        return {
-          success: true,
-          positions: Array.isArray(positions) ? positions : [],
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to get positions",
-        }
-      }
-    } catch (error: any) {
-      logger.error("Error in getPositions:", error)
-      return {
-        success: false,
-        error:
-          error.response?.data?.error || error.response?.data?.message || error.message || "Failed to get positions",
-      }
-    }
-  }
-
-  async getTradeHistory(loginId: number, from: string, to: string) {
-    try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.GET_HISTORY, {
-        login: loginId,
-        from: from,
-        to: to,
-      })
-
-      if (response.success !== false) {
-        const trades = response.trades || response.history || response.data || response || []
-        return {
-          success: true,
-          trades: Array.isArray(trades) ? trades : [],
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to get trade history",
-        }
-      }
-    } catch (error: any) {
-      logger.error("Error in getTradeHistory:", error)
-      return {
-        success: false,
-        error:
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to get trade history",
-      }
-    }
-  }
-
-  async updateAccount(loginId: number, updateData: any) {
-    try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.UPDATE_ACCOUNT, {
-        login: loginId,
-        ...updateData,
-      })
-
-      if (response.success !== false) {
-        return {
-          success: true,
-          data: response,
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to update account",
-        }
-      }
-    } catch (error: any) {
-      logger.error("Error in updateAccount:", error)
-      return {
-        success: false,
-        error:
-          error.response?.data?.error || error.response?.data?.message || error.message || "Failed to update account",
-      }
-    }
-  }
-
-  async getSymbols() {
-    try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.GET_SYMBOLS, {})
-
-      if (response.success !== false) {
-        const symbols = response.symbols || response.data || response || []
-        return {
-          success: true,
-          symbols: Array.isArray(symbols) ? symbols : [],
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to get symbols",
-        }
-      }
-    } catch (error: any) {
-      logger.error("Error in getSymbols:", error)
-      return {
-        success: false,
-        error: error.response?.data?.error || error.response?.data?.message || error.message || "Failed to get symbols",
-      }
-    }
-  }
-
-  async getQuotes(symbols: string[]) {
-    try {
-      const response = await this.makeRequest(MT5_CONFIG.ENDPOINTS.GET_QUOTES, {
-        symbols: symbols,
-      })
-
-      if (response.success !== false) {
-        const quotes = response.quotes || response.data || response || []
-        return {
-          success: true,
-          quotes: Array.isArray(quotes) ? quotes : [],
-        }
-      } else {
-        return {
-          success: false,
-          error: response.error || response.message || "Failed to get quotes",
-        }
-      }
-    } catch (error: any) {
-      logger.error("Error in getQuotes:", error)
-      return {
-        success: false,
-        error: error.response?.data?.error || error.response?.data?.message || error.message || "Failed to get quotes",
-      }
-    }
-  }
-
-  // Test connection to MT5 server
-  async testConnection() {
-    try {
-      const response = await this.makeRequest("/api/System/Status", {})
-      return {
-        success: true,
-        status: "Connected",
-        server: this.serverIp,
-        data: response,
-      }
-    } catch (error: any) {
-      logger.error("Error testing MT5 connection:", error)
-      return {
-        success: false,
-        status: "Disconnected",
-        error: error.message,
-      }
+      const account = await this.getAccount(login)
+      return account?.balance || 0
+    } catch (error) {
+      console.error("Get Balance Error:", error)
+      return 0
     }
   }
 }

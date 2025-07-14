@@ -3,15 +3,9 @@ import cors from "cors"
 import helmet from "helmet"
 import rateLimit from "express-rate-limit"
 import dotenv from "dotenv"
-import { logger } from "./utils/logger"
-import { errorHandler } from "./middleware/errorHandler"
-import { authRoutes } from "./routes/auth"
-import { tradingRoutes } from "./routes/trading"
-import { accountRoutes } from "./routes/account"
-import { balanceRoutes } from "./routes/balance"
-import { paymentRoutes } from "./routes/payment"
-import { adminRoutes } from "./routes/admin"
+import accountRoutes from "./routes/account.js"
 
+// Load environment variables
 dotenv.config()
 
 const app = express()
@@ -19,53 +13,73 @@ const PORT = process.env.PORT || 3001
 
 // Security middleware
 app.use(helmet())
+
+// CORS configuration
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL || "http://localhost:3000", process.env.ADMIN_URL || "http://localhost:3002"],
+    origin: [
+      "http://localhost:3000", // Frontend
+      "http://localhost:3002", // Admin panel
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      process.env.ADMIN_URL || "http://localhost:3002",
+    ],
     credentials: true,
   }),
 )
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: "Too many requests from this IP, please try again later.",
+  windowMs: Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || "900000"), // 15 minutes
+  max: Number.parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || "100"), // limit each IP to 100 requests per windowMs
+  message: {
+    error: "Too many requests from this IP, please try again later.",
+  },
 })
-app.use(limiter)
+app.use("/api/", limiter)
 
 // Body parsing middleware
 app.use(express.json({ limit: "10mb" }))
-app.use(express.urlencoded({ extended: true }))
+app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
-// Health check
+// Health check endpoint
 app.get("/health", (req, res) => {
-  res.status(200).json({
+  res.json({
     status: "OK",
     timestamp: new Date().toISOString(),
-    service: "MT5 CRM Backend API",
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
   })
 })
 
 // API routes
-app.use("/api/auth", authRoutes)
-app.use("/api/trading", tradingRoutes)
 app.use("/api/account", accountRoutes)
-app.use("/api/balance", balanceRoutes)
-app.use("/api/payment", paymentRoutes)
-app.use("/api/admin", adminRoutes)
-
-// Error handling middleware
-app.use(errorHandler)
 
 // 404 handler
 app.use("*", (req, res) => {
-  res.status(404).json({ error: "Route not found" })
+  res.status(404).json({
+    success: false,
+    message: "API endpoint not found",
+    path: req.originalUrl,
+  })
 })
 
+// Global error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("Global Error Handler:", err)
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  })
+})
+
+// Start server
 app.listen(PORT, () => {
-  logger.info(`MT5 CRM Backend API Server running on port ${PORT}`)
-  logger.info(`Environment: ${process.env.NODE_ENV || "development"}`)
+  console.log(`🚀 MT5 CRM Backend Server running on port ${PORT}`)
+  console.log(`📊 Health check: http://localhost:${PORT}/health`)
+  console.log(`🔗 MT5 API: ${process.env.MT5_API_URL || "http://173.208.156.141:6701"}`)
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`)
 })
 
 export default app
