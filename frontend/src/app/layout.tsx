@@ -8,8 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "MT5 CRM Platform",
-  description: "Professional trading platform with MT5 integration",
-  keywords: "trading, MT5, forex, CFD, investment, financial markets",
+  description: "Professional MT5 Trading Account Management Platform",
 }
 
 export default function RootLayout({

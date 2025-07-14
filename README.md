@@ -1,179 +1,212 @@
 # MT5 CRM Platform
 
-A comprehensive, professional-grade CRM platform for MT5 trading with real-time integration, user management, and advanced admin controls.
+A comprehensive CRM platform for managing real MT5 trading accounts with a React.js frontend, Node.js backend, and React admin panel.
 
-## 🏗️ Architecture
-
-This project is organized into three independent, modular components:
+## Project Structure
 
 \`\`\`
 mt5-crm-platform/
-├── backend/           # API Server & MT5 Integration
-├── admin-panel/       # Admin Dashboard
-├── frontend/          # User-Facing Website
-└── README.md         # This file
+├── backend/          # Node.js API server
+├── admin-panel/      # React admin dashboard
+├── frontend/         # User-facing website
+└── README.md
 \`\`\`
 
-### 🔧 Backend (`/backend`)
-- **Port**: 3001
-- **Tech Stack**: Node.js, Express, TypeScript
-- **Features**: MT5 API integration, authentication, trading operations, payments
-- **Database**: Configurable (PostgreSQL recommended)
+## Features
 
-### 👨‍💼 Admin Panel (`/admin-panel`)
-- **Port**: 3002  
-- **Tech Stack**: Next.js, React, TypeScript, Tailwind CSS
-- **Features**: User management, trading oversight, balance operations, system monitoring
+### Frontend (User-Facing Website)
+- **Authentication**: Secure login/registration with JWT
+- **Dashboard**: Real-time account overview with balance, equity, positions
+- **Live Account Creation**: Create real MT5 accounts via API
+- **Deposit System**: Stripe integration for secure payments
+- **Withdrawal Requests**: Submit and track withdrawal requests
+- **Transaction History**: Complete financial transaction logs
+- **Trading Interface**: View positions, history, and charts
+- **Profile Management**: Update account settings and preferences
 
-### 🌐 Frontend (`/frontend`)
-- **Port**: 3000
-- **Tech Stack**: Next.js, React, TypeScript, Tailwind CSS, Framer Motion
-- **Features**: User registration, trading dashboard, payments, account management
+### Backend (API Server)
+- **MT5 Integration**: Direct connection to live MT5 API
+- **Account Management**: Create, update, and manage MT5 accounts
+- **Balance Operations**: Handle deposits, withdrawals, and transfers
+- **Trading Operations**: Execute trades and manage positions
+- **Payment Processing**: Stripe integration for deposits
+- **Security**: JWT authentication, rate limiting, input validation
 
-## 🚀 Quick Start
+### Admin Panel
+- **User Management**: Full CRUD operations for users
+- **Account Monitoring**: Real-time MT5 account oversight
+- **Balance Operations**: Manual balance adjustments
+- **Trade Management**: Close positions, view trade history
+- **System Logs**: Monitor API calls and system events
+- **Dashboard Analytics**: Platform statistics and metrics
+
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- MT5 server access (credentials provided)
+- Node.js 18+ and npm
+- MT5 API server running
+- Stripe account for payments
+- PostgreSQL database (optional)
 
-### 1. Clone and Setup
+### Installation
+
+1. **Clone and install dependencies:**
 \`\`\`bash
 git clone <repository-url>
 cd mt5-crm-platform
+npm run install:all
 \`\`\`
 
-### 2. Backend Setup
+2. **Configure environment variables:**
 \`\`\`bash
-cd backend
-npm install
-cp .env.example .env
-# Edit .env with your configuration
+# Backend
+cp backend/.env.example backend/.env
+# Edit backend/.env with your MT5 API and Stripe credentials
+
+# Frontend
+cp frontend/.env.local.example frontend/.env.local
+# Edit frontend/.env.local with your API URL and Stripe publishable key
+
+# Admin Panel
+cp admin-panel/.env.local.example admin-panel/.env.local
+# Edit admin-panel/.env.local with your API URL
+\`\`\`
+
+3. **Start all services:**
+\`\`\`bash
 npm run dev
 \`\`\`
 
-### 3. Admin Panel Setup
-\`\`\`bash
-cd admin-panel
-npm install  
-cp .env.local.example .env.local
-# Edit .env.local with backend API URL
-npm run dev
+This will start:
+- Backend API: http://localhost:3001
+- Frontend: http://localhost:3000
+- Admin Panel: http://localhost:3002
+
+## Environment Variables
+
+### Backend (.env)
+\`\`\`env
+PORT=3001
+MT5_API_URL=http://your-mt5-server:8080
+MT5_API_KEY=your_api_key
+STRIPE_SECRET_KEY=sk_test_...
+JWT_SECRET=your_jwt_secret
 \`\`\`
 
-### 4. Frontend Setup
-\`\`\`bash
-cd frontend
-npm install
-cp .env.local.example .env.local  
-# Edit .env.local with backend API URL
-npm run dev
+### Frontend (.env.local)
+\`\`\`env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 \`\`\`
 
-### 5. Access Applications
-- **Frontend**: http://localhost:3000
-- **Admin Panel**: http://localhost:3002  
-- **Backend API**: http://localhost:3001
+## API Endpoints
 
-## 🔑 Key Features
+### Authentication
+- `POST /api/auth/login` - User login
+- `POST /api/auth/register` - User registration
 
-### Backend API
-- ✅ Complete MT5 server integration
-- ✅ JWT authentication system
-- ✅ Real-time trading operations
-- ✅ Stripe payment processing
-- ✅ Comprehensive admin endpoints
-- ✅ Security middleware & rate limiting
-- ✅ Structured logging with Winston
+### Account Management
+- `POST /api/account/create-live-account` - Create MT5 account
+- `GET /api/account/mt5-info` - Get account information
+- `GET /api/account/balance` - Get account balance
 
-### Admin Panel  
-- ✅ Real-time dashboard with live statistics
-- ✅ Complete user management (CRUD operations)
-- ✅ MT5 account creation and management
-- ✅ Live position monitoring and trade execution
-- ✅ Balance operations (deposits, withdrawals, credits)
-- ✅ System logs and activity monitoring
-- ✅ Professional, responsive UI
+### Trading
+- `GET /api/trading/positions` - Get open positions
+- `POST /api/trading/history` - Get trade history
+- `GET /api/trading/journal` - Get trading logs
 
-### Frontend Website
-- ✅ Modern landing page with animations
-- ✅ User registration and authentication  
-- ✅ Trading dashboard with real-time data
-- ✅ Stripe-powered payment processing
-- ✅ Account management and settings
-- ✅ Mobile-responsive design
-- ✅ SEO optimized
+### Balance Operations
+- `POST /api/balance/deposit` - Process deposit
+- `POST /api/balance/withdraw` - Request withdrawal
+- `GET /api/balance/history` - Transaction history
 
-## 🔐 Security Features
+## MT5 Integration
+
+The platform connects to your MT5 server via REST API calls:
+
+### Account Creation
+\`\`\`javascript
+POST /Home/createAccount
+{
+  "type": 0,
+  "groupName": "REAL-LIVE-GROUP",
+  "name": "John Doe",
+  "email": "john@example.com",
+  "leverage": 100,
+  "balance": 0
+}
+\`\`\`
+
+### Balance Operations
+\`\`\`javascript
+POST /Home/balanceOperation
+{
+  "loginId": 12345,
+  "type": "deposit",
+  "amount": 1000,
+  "comment": "Stripe deposit"
+}
+\`\`\`
+
+## Security Features
 
 - JWT-based authentication
-- Rate limiting and DDoS protection
-- CORS configuration
+- Rate limiting on API endpoints
 - Input validation and sanitization
+- CORS protection
+- Helmet.js security headers
 - Secure password hashing
 - Environment variable protection
-- HTTPS enforcement (production)
 
-## 📊 MT5 Integration
+## Deployment
 
-Direct integration with your MT5 server:
-- **Server**: 86.104.251.148:443
-- **Manager ID**: 1146
-- **API Endpoint**: http://173.208.156.141:6701
+### Production Build
+\`\`\`bash
+npm run build
+\`\`\`
 
-### Supported Operations
-- Account creation and management
-- Real-time position monitoring
-- Trade execution (open/close)
-- Balance operations
-- Historical data retrieval
-- Symbol information
-- Server logs and journal
+### Individual Services
+\`\`\`bash
+# Backend only
+npm run build:backend
+npm run start:backend
 
-## 🚀 Deployment
+# Frontend only
+npm run build:frontend
+npm run start:frontend
 
-Each component can be deployed independently:
+# Admin panel only
+npm run build:admin
+npm run start:admin
+\`\`\`
 
-### Backend
-- **Recommended**: Vercel, Railway, or VPS
-- **Environment**: Node.js runtime
-- **Database**: PostgreSQL (recommended)
+### Docker Deployment
+Each service includes a Dockerfile for containerized deployment.
 
-### Admin Panel & Frontend  
-- **Recommended**: Vercel, Netlify, or AWS Amplify
-- **Build**: Static export or SSR
-- **CDN**: Automatic with most platforms
+## Development
 
-## 📝 Environment Configuration
+### Project Structure
+- **Modular Architecture**: Each service is independent
+- **Shared Types**: Common TypeScript interfaces
+- **API Client**: Centralized HTTP client with interceptors
+- **Error Handling**: Comprehensive error management
+- **Logging**: Winston-based logging system
 
-Each component has its own environment configuration:
+### Adding New Features
+1. Define API endpoints in backend routes
+2. Update TypeScript types
+3. Implement frontend components
+4. Add admin panel management (if needed)
+5. Update documentation
 
-- `backend/.env` - API keys, database, MT5 credentials
-- `admin-panel/.env.local` - Backend API URL, app settings  
-- `frontend/.env.local` - Backend API URL, Stripe keys, app settings
-
-## 🔧 Development
-
-### Code Structure
-- **TypeScript** throughout for type safety
-- **ESLint** for code quality
-- **Modular architecture** for maintainability
-- **Comprehensive error handling**
-- **Structured logging**
-
-### API Documentation
-- RESTful API design
-- Comprehensive endpoint documentation
-- Request/response examples
-- Authentication requirements
-
-## 📞 Support
+## Support
 
 For technical support or questions:
-- Check component-specific README files
-- Review API documentation
-- Contact development team
+- Check the API documentation
+- Review error logs in the backend
+- Ensure MT5 API server is accessible
+- Verify environment variables are correct
 
-## 📄 License
+## License
 
 This project is proprietary software. All rights reserved.

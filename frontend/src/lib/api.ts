@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance } from "axios"
-import toast from "react-hot-toast"
+import { toast } from "react-hot-toast"
 
 class ApiClient {
   private api: AxiosInstance
@@ -29,15 +29,11 @@ class ApiClient {
       (error) => {
         if (error.response?.status === 401) {
           this.logout()
-          if (typeof window !== "undefined") {
-            window.location.href = "/login"
-          }
+          window.location.href = "/login"
         }
 
         const message = error.response?.data?.error || error.message || "An error occurred"
-        if (typeof window !== "undefined") {
-          toast.error(message)
-        }
+        toast.error(message)
 
         return Promise.reject(error)
       },
@@ -45,64 +41,50 @@ class ApiClient {
 
     // Load token from localStorage
     if (typeof window !== "undefined") {
-      this.token = localStorage.getItem("auth_token")
+      this.token = localStorage.getItem("user_token")
     }
   }
 
   setToken(token: string) {
     this.token = token
-    localStorage.setItem("auth_token", token)
+    localStorage.setItem("user_token", token)
   }
 
   logout() {
     this.token = null
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user_data")
+    localStorage.removeItem("user_token")
   }
 
   // Authentication
-  async register(userData: {
-    firstName: string
-    lastName: string
-    email: string
-    password: string
-    phone?: string
-  }) {
-    const response = await this.api.post("/auth/register", userData)
-    if (response.data.token) {
-      this.setToken(response.data.token)
-      localStorage.setItem("user_data", JSON.stringify(response.data.user))
-    }
-    return response.data
-  }
-
   async login(email: string, password: string) {
     const response = await this.api.post("/auth/login", { email, password })
     if (response.data.token) {
       this.setToken(response.data.token)
-      localStorage.setItem("user_data", JSON.stringify(response.data.user))
+    }
+    return response.data
+  }
+
+  async register(userData: any) {
+    const response = await this.api.post("/auth/register", userData)
+    if (response.data.token) {
+      this.setToken(response.data.token)
     }
     return response.data
   }
 
   // Account Management
-  async getAccountInfo() {
-    const response = await this.api.get("/account/info")
+  async createLiveAccount(accountData: any) {
+    const response = await this.api.post("/account/create-live-account", accountData)
     return response.data
   }
 
-  async createLiveAccount(accountData: {
-    name: string
-    phone: string
-    country: string
-    city: string
-    address: string
-    leverage: number
-    groupName: string
-    mPassword: string
-    iPassword: string
-  }) {
-    const response = await this.api.post("/account/create-live", accountData)
+  async getMT5AccountInfo() {
+    const response = await this.api.get("/account/mt5-info")
+    return response.data
+  }
+
+  async getAccountBalance() {
+    const response = await this.api.get("/account/balance")
     return response.data
   }
 
@@ -111,28 +93,14 @@ class ApiClient {
     return response.data
   }
 
-  async disableAccount() {
-    const response = await this.api.post("/account/disable")
-    return response.data
-  }
-
   // Trading
   async getPositions() {
-    const user = JSON.parse(localStorage.getItem("user_data") || "{}")
-    if (!user.loginId) throw new Error("No MT5 account found")
-
-    const response = await this.api.get(`/trading/position/${user.loginId}`)
+    const response = await this.api.get("/trading/positions")
     return response.data
   }
 
-  async getTradeHistory(params?: { from?: string; to?: string }) {
-    const user = JSON.parse(localStorage.getItem("user_data") || "{}")
-    if (!user.loginId) throw new Error("No MT5 account found")
-
-    const response = await this.api.post("/trading/history", {
-      loginId: user.loginId,
-      ...params,
-    })
+  async getTradeHistory(params: any) {
+    const response = await this.api.post("/trading/history", params)
     return response.data
   }
 
@@ -141,48 +109,47 @@ class ApiClient {
     return response.data
   }
 
-  async getChartData(params: { symbol: string; timeframe: number; from?: string; to?: string }) {
-    const response = await this.api.post("/trading/chart", params)
+  async getSymbolInfo(symbol: string) {
+    const response = await this.api.get(`/trading/symbol/${symbol}`)
+    return response.data
+  }
+
+  async getChartData(chartParams: any) {
+    const response = await this.api.post("/trading/chart", chartParams)
     return response.data
   }
 
   // Balance Operations
-  async processDeposit(data: { amount: number; paymentIntentId: string; description?: string }) {
-    const response = await this.api.post("/balance/deposit", data)
-    return response.data
-  }
-
-  async requestWithdrawal(data: {
-    amount: number
-    method: string
-    details: any
-    reason?: string
-  }) {
-    const response = await this.api.post("/balance/withdrawal-request", data)
-    return response.data
-  }
-
-  async getTransactionHistory(params?: { from?: string; to?: string; type?: string }) {
-    const response = await this.api.get("/balance/history", { params })
-    return response.data
-  }
-
-  async getWithdrawalRequests() {
-    const response = await this.api.get("/balance/withdrawal-requests")
-    return response.data
-  }
-
-  // Payments
-  async createPaymentIntent(amount: number, currency = "usd") {
-    const response = await this.api.post("/payment/create-payment-intent", {
+  async deposit(amount: number, paymentMethodId: string) {
+    const response = await this.api.post("/balance/deposit", {
       amount,
-      currency,
+      paymentMethodId,
     })
     return response.data
   }
 
-  async getPaymentHistory() {
-    const response = await this.api.get("/payment/history")
+  async requestWithdrawal(amount: number, method: string, details: any) {
+    const response = await this.api.post("/balance/withdraw", {
+      amount,
+      method,
+      details,
+    })
+    return response.data
+  }
+
+  async getTransactionHistory() {
+    const response = await this.api.get("/balance/history")
+    return response.data
+  }
+
+  // Payments
+  async createPaymentIntent(amount: number) {
+    const response = await this.api.post("/payment/create-intent", { amount })
+    return response.data
+  }
+
+  async confirmPayment(paymentIntentId: string) {
+    const response = await this.api.post("/payment/confirm", { paymentIntentId })
     return response.data
   }
 }

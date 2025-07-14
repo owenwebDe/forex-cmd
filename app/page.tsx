@@ -1,7 +1,7 @@
 "use client"
 
-import DashboardLayout from "../frontend/src/components/Layout/DashboardLayout"
+import { ThemeProvider } from "../components/theme-provider"
 
 export default function SyntheticV0PageForDeployment() {
-  return <DashboardLayout />
+  return <ThemeProvider />
 }

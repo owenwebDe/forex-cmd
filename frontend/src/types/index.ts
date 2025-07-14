@@ -1,13 +1,15 @@
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
+  name: string
   phone?: string
-  role: "user" | "admin"
-  loginId?: number
+  country?: string
+  city?: string
+  address?: string
+  mt5LoginId?: number
+  isActive: boolean
   createdAt: string
-  lastLogin?: string
+  updatedAt: string
 }
 
 export interface MT5Account {
@@ -15,23 +17,20 @@ export interface MT5Account {
   name: string
   email: string
   group: string
+  leverage: number
   balance: number
   equity: number
   margin: number
   freeMargin: number
   marginLevel: number
-  leverage: number
-  currency: string
-  server: string
-  lastActivity: string
   enabled: boolean
-  tradeAllowed: boolean
+  server: string
 }
 
 export interface Position {
   ticket: number
   symbol: string
-  type: "buy" | "sell"
+  type: string
   volume: number
   openPrice: number
   currentPrice: number
@@ -48,32 +47,47 @@ export interface Trade {
   type: string
   volume: number
   openPrice: number
-  closePrice?: number
+  closePrice: number
   profit: number
   swap: number
   commission: number
   openTime: string
-  closeTime?: string
+  closeTime: string
   comment: string
 }
 
 export interface Transaction {
   id: string
-  type: "deposit" | "withdrawal" | "credit" | "bonus"
+  type: "deposit" | "withdrawal"
   amount: number
+  status: "pending" | "completed" | "failed" | "cancelled"
+  method: string
   description: string
-  timestamp: string
-  status: "completed" | "pending" | "failed"
-  paymentMethod?: string
+  createdAt: string
+  updatedAt: string
 }
 
-export interface WithdrawalRequest {
-  id: string
-  amount: number
-  method: string
-  details: any
-  reason?: string
-  status: "pending" | "approved" | "rejected" | "completed"
-  requestedAt: string
-  processedAt?: string
+export interface CreateAccountData {
+  name: string
+  email: string
+  phone: string
+  country: string
+  city: string
+  address: string
+  leverage: number
+  groupName: string
+  balance: number
+  mPassword?: string
+  iPassword?: string
+}
+
+export interface DashboardStats {
+  balance: number
+  equity: number
+  margin: number
+  freeMargin: number
+  marginLevel: number
+  openPositions: number
+  totalProfit: number
+  todayProfit: number
 }
