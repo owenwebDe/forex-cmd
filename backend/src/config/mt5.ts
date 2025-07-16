@@ -18,15 +18,15 @@ export const MT5_CONFIG = {
 
   // API Endpoints
   ENDPOINTS: {
-    CREATE_ACCOUNT: "/api/Account/Create",
-    GET_ACCOUNT: "/api/Account/Get",
-    UPDATE_ACCOUNT: "/api/Account/Update",
-    GET_BALANCE: "/api/Account/Balance",
-    BALANCE_OPERATION: "/api/Account/BalanceOperation",
-    GET_POSITIONS: "/api/Trading/Positions",
-    GET_HISTORY: "/api/Trading/History",
-    GET_SYMBOLS: "/api/Market/Symbols",
-    GET_QUOTES: "/api/Market/Quotes",
+    CREATE_ACCOUNT: "/Account/Create",
+    GET_ACCOUNT: "/Account/Get",
+    UPDATE_ACCOUNT: "/Account/Update",
+    GET_BALANCE: "/Account/Balance",
+    BALANCE_OPERATION: "/Account/BalanceOperation",
+    GET_POSITIONS: "/Trading/Positions",
+    GET_HISTORY: "/Trading/History",
+    GET_SYMBOLS: "/Market/Symbols",
+    GET_QUOTES: "/Market/Quotes",
   },
 
   // Request Timeout
@@ -39,9 +39,12 @@ export const MT5_CONFIG = {
 
 export const ACCOUNT_GROUPS = {
   DEMO: "demo\\demoforex",
-  LIVE_STANDARD: "real\\standard",
-  LIVE_ECN: "real\\ecn",
-  LIVE_VIP: "real\\vip",
+  ENC: "real\\enc",
+  Silver: "real\\silver", 
+  Prime: "real\\prime",
+  Standard: "real\\standard",
+  Gold: "real\\gold",
+  Cent: "real\\cent",
 }
 
-export const LEVERAGE_OPTIONS = [1, 10, 20, 50, 100, 200, 300, 400, 500, 1000]
+export const LEVERAGE_OPTIONS = [10, 50, 100, 200, 300, 400, 500]

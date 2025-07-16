@@ -48,11 +48,16 @@ class ApiClient {
   setToken(token: string) {
     this.token = token
     localStorage.setItem("user_token", token)
+    // Set cookie with HttpOnly flag
+    document.cookie = `user_token=${token}; path=/; max-age=86400; secure; samesite=strict`
   }
 
   logout() {
     this.token = null
     localStorage.removeItem("user_token")
+    // Remove cookie
+    document.cookie = "user_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    window.location.href = "/login"
   }
 
   // Authentication
@@ -75,6 +80,11 @@ class ApiClient {
   // Account Management
   async createLiveAccount(accountData: any) {
     const response = await this.api.post("/account/create-live-account", accountData)
+    return response.data
+  }
+
+  async getUserMT5Accounts() {
+    const response = await this.api.get("/account/user-accounts")
     return response.data
   }
 

@@ -24,15 +24,21 @@ export default function LoginPage() {
 
     try {
       const response = await apiClient.login(formData.email, formData.password)
-
-      if (response.success) {
+      
+      if (response.token) {
         toast.success("Login successful!")
-        router.push("/dashboard")
+        // Ensure token is set before navigation
+        apiClient.setToken(response.token)
+        // Add a small delay to ensure token is stored
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 100)
       } else {
-        toast.error(response.error || "Login failed")
+        toast.error("Login failed - No token received")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error)
+      toast.error(error?.response?.data?.error || "Login failed")
     } finally {
       setLoading(false)
     }

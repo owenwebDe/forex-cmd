@@ -11,12 +11,10 @@ import { toast } from "react-hot-toast"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
-    country: "",
-    city: "",
-    address: "",
     password: "",
     confirmPassword: "",
   })
@@ -44,14 +42,15 @@ export default function RegisterPage() {
       const { confirmPassword, ...registrationData } = formData
       const response = await apiClient.register(registrationData)
 
-      if (response.success) {
-        toast.success("Registration successful!")
+      if (response.token) {
+        toast.success("Registration successful! Welcome to your CRM dashboard.")
         router.push("/dashboard")
       } else {
         toast.error(response.error || "Registration failed")
       }
     } catch (error) {
       console.error("Registration error:", error)
+      toast.error("Registration failed. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -71,26 +70,43 @@ export default function RegisterPage() {
           <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
             <UserPlus className="h-6 w-6 text-blue-600" />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your account</h2>
-          <p className="mt-2 text-center text-sm text-gray-600">Join our MT5 trading platform</p>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create your CRM account</h2>
+          <p className="mt-2 text-center text-sm text-gray-600">Join our MT5 CRM management platform</p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="form-label">
-                Full Name
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                required
-                className="form-input"
-                placeholder="Enter your full name"
-                value={formData.name}
-                onChange={handleChange}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstName" className="form-label">
+                  First Name
+                </label>
+                <input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="First name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                />
+              </div>
+              <div>
+                <label htmlFor="lastName" className="form-label">
+                  Last Name
+                </label>
+                <input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  required
+                  className="form-input"
+                  placeholder="Last name"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                />
+              </div>
             </div>
 
             <div>
@@ -126,54 +142,6 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="country" className="form-label">
-                  Country
-                </label>
-                <input
-                  id="country"
-                  name="country"
-                  type="text"
-                  required
-                  className="form-input"
-                  placeholder="Country"
-                  value={formData.country}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label htmlFor="city" className="form-label">
-                  City
-                </label>
-                <input
-                  id="city"
-                  name="city"
-                  type="text"
-                  required
-                  className="form-input"
-                  placeholder="City"
-                  value={formData.city}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="address" className="form-label">
-                Address
-              </label>
-              <input
-                id="address"
-                name="address"
-                type="text"
-                required
-                className="form-input"
-                placeholder="Enter your address"
-                value={formData.address}
-                onChange={handleChange}
-              />
-            </div>
 
             <div>
               <label htmlFor="password" className="form-label">
@@ -245,7 +213,7 @@ export default function RegisterPage() {
               {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
-                "Create Account"
+                "Create CRM Account"
               )}
             </button>
           </div>

@@ -25,8 +25,10 @@ export interface CreateAccountRequest {
   address: string
   zipCode: string
   leverage: number
-  accountType: "demo" | "live"
-  initialDeposit?: number
+  accountGroup: "ENC" | "Silver" | "Prime" | "Standard" | "Gold" | "Cent"
+  password: string
+  investorPassword: string
+  initialDeposit: number
 }
 
 export interface MT5Position {
@@ -68,10 +70,17 @@ class MT5Service {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        ...(data && { data }),
+        ...(data && { data: JSON.stringify(data) }),
       }
 
+      console.log('MT5 API Request:', {
+        url: config.url,
+        method: config.method,
+        data: config.data
+      });
+
       const response: AxiosResponse<T> = await axios(config)
+      console.log('MT5 API Response:', response.data);
       return response.data
     } catch (error: any) {
       console.error(`MT5 API Error [${endpoint}]:`, error.response?.data || error.message)
@@ -92,21 +101,23 @@ class MT5Service {
 
   async createAccount(request: CreateAccountRequest): Promise<MT5Account> {
     const accountData = {
-      mngId: MT5_CONFIG.MANAGER_ID,
-      pwd: MT5_CONFIG.MANAGER_PASSWORD,
-      srvIp: MT5_CONFIG.SERVER_IP,
-      name: request.name,
-      email: request.email,
-      phone: request.phone,
-      country: request.country,
-      city: request.city,
-      address: request.address,
-      zipCode: request.zipCode,
-      group: request.accountType === "demo" ? ACCOUNT_GROUPS.DEMO : ACCOUNT_GROUPS.LIVE_STANDARD,
-      leverage: request.leverage,
-      balance: request.initialDeposit || (request.accountType === "demo" ? MT5_CONFIG.DEFAULT_BALANCE : 0),
-      currency: "USD",
-      comment: `Account created via CRM - ${new Date().toISOString()}`,
+      ManagerId: MT5_CONFIG.MANAGER_ID,
+      Password: MT5_CONFIG.MANAGER_PASSWORD,
+      ServerIP: MT5_CONFIG.SERVER_IP,
+      Name: request.name,
+      Email: request.email,
+      Phone: request.phone,
+      Country: request.country,
+      City: request.city,
+      Address: request.address,
+      ZipCode: request.zipCode,
+      Group: ACCOUNT_GROUPS[request.accountGroup],
+      Leverage: request.leverage,
+      MainPassword: request.password,
+      InvestorPassword: request.investorPassword,
+      InitialBalance: request.initialDeposit,
+      Currency: "USD",
+      Comment: `${request.accountGroup} Account created via CRM - ${new Date().toISOString()}`
     }
 
     try {
@@ -118,12 +129,12 @@ class MT5Service {
           password: response.data.password,
           name: request.name,
           email: request.email,
-          group: accountData.group,
+          group: accountData.Group,
           leverage: request.leverage,
-          balance: accountData.balance,
-          equity: accountData.balance,
+          balance: accountData.InitialBalance,
+          equity: accountData.InitialBalance,
           margin: 0,
-          freeMargin: accountData.balance,
+          freeMargin: accountData.InitialBalance,
           marginLevel: 0,
           server: MT5_CONFIG.SERVER_NAME,
         }
@@ -226,6 +237,114 @@ class MT5Service {
       return 0
     }
   }
+
+  async depositToAccount(login: number, amount: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      const operation: BalanceOperation = {
+        login,
+        amount,
+        comment: `Wallet transfer - Deposit ${amount} USD`,
+        type: "deposit"
+      }
+
+      const success = await this.performBalanceOperation(operation)
+      
+      if (success) {
+        return { success: true }
+      } else {
+        return { success: false, error: "MT5 deposit operation failed" }
+      }
+    } catch (error: any) {
+      console.error("Deposit to MT5 account error:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async withdrawFromAccount(login: number, amount: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      // First check if account has sufficient balance
+      const currentBalance = await this.getAccountBalance(login)
+      if (currentBalance < amount) {
+        return { success: false, error: "Insufficient MT5 account balance" }
+      }
+
+      const operation: BalanceOperation = {
+        login,
+        amount,
+        comment: `Wallet transfer - Withdrawal ${amount} USD`,
+        type: "withdrawal"
+      }
+
+      const success = await this.performBalanceOperation(operation)
+      
+      if (success) {
+        return { success: true }
+      } else {
+        return { success: false, error: "MT5 withdrawal operation failed" }
+      }
+    } catch (error: any) {
+      console.error("Withdraw from MT5 account error:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async getUserAccounts(email: string): Promise<MT5Account[]> {
+    try {
+      // This is a mock implementation since the real MT5 API endpoint for user accounts
+      // would need to be implemented on the MT5 server side
+      // For now, return mock accounts
+      const mockAccounts: MT5Account[] = [
+        {
+          login: 123456,
+          password: "****",
+          name: "Standard Account",
+          email: email,
+          group: "standard",
+          leverage: 100,
+          balance: 8750.25,
+          equity: 8750.25,
+          margin: 0,
+          freeMargin: 8750.25,
+          marginLevel: 0,
+          server: MT5_CONFIG.SERVER_NAME
+        },
+        {
+          login: 789012,
+          password: "****",
+          name: "Gold Account",
+          email: email,
+          group: "gold",
+          leverage: 200,
+          balance: 25300.75,
+          equity: 25300.75,
+          margin: 0,
+          freeMargin: 25300.75,
+          marginLevel: 0,
+          server: MT5_CONFIG.SERVER_NAME
+        },
+        {
+          login: 456789,
+          password: "****",
+          name: "Prime Account",
+          email: email,
+          group: "prime",
+          leverage: 500,
+          balance: 52140.00,
+          equity: 52140.00,
+          margin: 0,
+          freeMargin: 52140.00,
+          marginLevel: 0,
+          server: MT5_CONFIG.SERVER_NAME
+        }
+      ]
+
+      return mockAccounts
+    } catch (error) {
+      console.error("Get user accounts error:", error)
+      return []
+    }
+  }
 }
 
 export const mt5Service = new MT5Service()
+export { MT5Service }

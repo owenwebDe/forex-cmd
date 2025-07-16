@@ -5,7 +5,25 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, User, CreditCard, TrendingUp, History, Settings, LogOut, Menu, X, Plus } from "lucide-react"
+import { 
+  LayoutDashboard, 
+  User, 
+  CreditCard, 
+  TrendingUp, 
+  TrendingDown,
+  History, 
+  Settings, 
+  LogOut, 
+  Menu, 
+  X, 
+  Plus,
+  Users,
+  BarChart3,
+  PiggyBank,
+  Wallet,
+  FileText,
+  Shield
+} from "lucide-react"
 import { apiClient } from "@/lib/api"
 import { toast } from "react-hot-toast"
 
@@ -14,13 +32,45 @@ interface DashboardLayoutProps {
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Create Account", href: "/create-account", icon: Plus },
-  { name: "Deposit", href: "/deposit", icon: CreditCard },
-  { name: "Withdraw", href: "/withdraw", icon: TrendingUp },
-  { name: "Transactions", href: "/transactions", icon: History },
-  { name: "Profile", href: "/profile", icon: User },
-  { name: "Settings", href: "/settings", icon: Settings },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, description: "Overview & Analytics" },
+  { 
+    name: "Account Management", 
+    href: "/accounts", 
+    icon: Wallet, 
+    description: "MT5 Accounts",
+    submenu: [
+      { name: "Create Account", href: "/create-account", icon: Plus },
+      { name: "Account List", href: "/accounts", icon: Users },
+      { name: "Account Settings", href: "/account-settings", icon: Settings },
+    ]
+  },
+  { 
+    name: "Wallet", 
+    href: "/wallet", 
+    icon: CreditCard, 
+    description: "Wallet Management",
+    submenu: [
+      { name: "My Wallet", href: "/wallet", icon: Wallet },
+      { name: "Transfer Funds", href: "/wallet/transfer", icon: TrendingUp },
+      { name: "Wallet History", href: "/wallet/history", icon: History },
+    ]
+  },
+  { 
+    name: "Transactions", 
+    href: "/transactions", 
+    icon: History, 
+    description: "Financial History",
+    submenu: [
+      { name: "Deposit Funds", href: "/deposit", icon: PiggyBank },
+      { name: "Withdraw Funds", href: "/withdraw", icon: TrendingDown },
+      { name: "Transaction History", href: "/transactions", icon: History },
+    ]
+  },
+  { name: "Reports", href: "/reports", icon: BarChart3, description: "Analytics & Reports" },
+  { name: "Documents", href: "/documents", icon: FileText, description: "Account Documents" },
+  { name: "Security", href: "/security", icon: Shield, description: "Account Security" },
+  { name: "Profile", href: "/profile", icon: User, description: "Personal Information" },
+  { name: "Settings", href: "/settings", icon: Settings, description: "App Settings" },
 ]
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -110,41 +160,128 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 }
 
 function SidebarContent({ navigation, pathname, onLogout }: any) {
+  const [expandedItems, setExpandedItems] = useState<string[]>([])
+
+  const toggleExpanded = (itemName: string) => {
+    setExpandedItems(prev => 
+      prev.includes(itemName) 
+        ? prev.filter(name => name !== itemName)
+        : [...prev, itemName]
+    )
+  }
+
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200">
-      <div className="flex items-center h-16 flex-shrink-0 px-4 bg-blue-600">
-        <h1 className="text-xl font-bold text-white">MT5 CRM</h1>
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-900 to-slate-800 border-r border-slate-700">
+      {/* Logo Section */}
+      <div className="flex items-center h-16 flex-shrink-0 px-4 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-xl font-bold text-white">MT5 CRM</h1>
+        </div>
       </div>
+
+      {/* Navigation */}
       <div className="flex-1 flex flex-col overflow-y-auto">
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-6 space-y-2">
           {navigation.map((item) => {
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || (item.submenu && item.submenu.some((sub: any) => pathname === sub.href))
+            const isExpanded = expandedItems.includes(item.name)
+
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`group flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-                  isActive ? "bg-blue-100 text-blue-900" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                <item.icon
-                  className={`mr-3 flex-shrink-0 h-5 w-5 ${
-                    isActive ? "text-blue-500" : "text-gray-400 group-hover:text-gray-500"
-                  }`}
-                />
-                {item.name}
-              </Link>
+              <div key={item.name}>
+                {item.submenu ? (
+                  <div>
+                    <button
+                      onClick={() => toggleExpanded(item.name)}
+                      className={`w-full group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                        isActive 
+                          ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30" 
+                          : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <item.icon className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive ? "text-blue-400" : "text-slate-400 group-hover:text-slate-300"}`} />
+                        <div className="text-left">
+                          <div className="font-medium">{item.name}</div>
+                          {item.description && (
+                            <div className="text-xs text-slate-400 group-hover:text-slate-300">{item.description}</div>
+                          )}
+                        </div>
+                      </div>
+                      <svg 
+                        className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {/* Submenu */}
+                    <div className={`mt-1 space-y-1 transition-all duration-200 overflow-hidden ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                      {item.submenu.map((subItem: any) => {
+                        const isSubActive = pathname === subItem.href
+                        return (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href}
+                            className={`group flex items-center pl-11 pr-3 py-2 text-sm rounded-lg transition-all duration-200 ${
+                              isSubActive 
+                                ? "bg-blue-500/30 text-white" 
+                                : "text-slate-400 hover:bg-slate-700/30 hover:text-slate-200"
+                            }`}
+                          >
+                            <subItem.icon className={`mr-2 h-4 w-4 ${isSubActive ? "text-blue-300" : "text-slate-500 group-hover:text-slate-400"}`} />
+                            {subItem.name}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 ${
+                      isActive 
+                        ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white border border-blue-500/30" 
+                        : "text-slate-300 hover:bg-slate-700/50 hover:text-white"
+                    }`}
+                  >
+                    <item.icon className={`mr-3 flex-shrink-0 h-5 w-5 ${isActive ? "text-blue-400" : "text-slate-400 group-hover:text-slate-300"}`} />
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      {item.description && (
+                        <div className="text-xs text-slate-400 group-hover:text-slate-300">{item.description}</div>
+                      )}
+                    </div>
+                  </Link>
+                )}
+              </div>
             )
           })}
         </nav>
-        <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-          <button onClick={onLogout} className="flex-shrink-0 w-full group block">
-            <div className="flex items-center">
-              <LogOut className="inline-block h-5 w-5 text-gray-400 group-hover:text-gray-500" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700 group-hover:text-gray-900">Logout</p>
-              </div>
+
+        {/* User Profile & Logout */}
+        <div className="flex-shrink-0 border-t border-slate-700 p-4">
+          <div className="flex items-center space-x-3 mb-3 p-2 rounded-lg bg-slate-800/50">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">Welcome Back</p>
+              <p className="text-xs text-slate-400 truncate">Account Manager</p>
+            </div>
+          </div>
+          
+          <button 
+            onClick={onLogout} 
+            className="flex items-center w-full px-3 py-2 text-sm font-medium text-slate-300 rounded-lg hover:bg-red-500/20 hover:text-red-400 transition-all duration-200 group"
+          >
+            <LogOut className="mr-3 h-4 w-4 text-slate-400 group-hover:text-red-400" />
+            Sign out
           </button>
         </div>
       </div>

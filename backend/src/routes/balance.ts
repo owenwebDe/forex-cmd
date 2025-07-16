@@ -1,193 +1,162 @@
 import { Router } from "express"
-import { body, query, validationResult } from "express-validator"
-import { authenticateToken, requireUserOrAdmin, type AuthRequest } from "../middleware/auth"
-import { mt5Service } from "../services/mt5Service"
-import { logger } from "../utils/logger"
+import { body, validationResult } from "express-validator"
 
 const router = Router()
 
-// Deposit funds (called after successful Stripe payment)
+// Simple logger for backend
+const logger = {
+  info: (message: string, data?: any) => console.log(`[INFO] ${message}`, data || ''),
+  error: (message: string, error?: any) => console.error(`[ERROR] ${message}`, error || '')
+}
+
+// Simple auth middleware (matching the pattern from account.ts)
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+
+  try {
+    // Basic token validation - should be replaced with proper JWT verification
+    req.user = { id: "user123", email: "user@example.com", role: "user" };
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: "Invalid or expired token" });
+  }
+};
+
+// Deposit funds
 router.post(
   "/deposit",
   [
     authenticateToken,
-    requireUserOrAdmin,
     body("amount").isFloat({ min: 0.01 }),
-    body("paymentIntentId").trim().isLength({ min: 1 }),
-    body("description").optional().trim(),
+    body("paymentMethodId").trim().isLength({ min: 1 }),
   ],
-  async (req: AuthRequest, res) => {
+  async (req, res) => {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() })
       }
 
-      const user = req.user
-      if (!user?.loginId) {
-        return res.status(404).json({ error: "No MT5 account found" })
+      const { amount, paymentMethodId } = req.body
+      const userId = req.user?.id
+
+      // Mock deposit processing - in production, integrate with MT5 and payment processor
+      const transaction = {
+        id: `txn_${Date.now()}`,
+        type: "deposit",
+        amount: Number.parseFloat(amount),
+        status: "completed",
+        timestamp: new Date().toISOString(),
+        paymentMethodId,
       }
 
-      const { amount, paymentIntentId, description } = req.body
-
-      const balanceData = {
-        loginid: user.loginId,
-        amount: Math.abs(amount),
-        txnType: 1, // Deposit
-        description: description || "Stripe deposit",
-        comment: `Stripe Payment - ${paymentIntentId}`,
-      }
-
-      const result = await mt5Service.balanceOperation(balanceData)
-
-      logger.info("Deposit processed:", {
-        userId: user.id,
-        loginId: user.loginId,
-        amount,
-        paymentIntentId,
-      })
+      logger.info("Deposit processed:", { userId, amount, paymentMethodId })
 
       res.json({
+        success: true,
         message: "Deposit processed successfully",
-        result,
-        transaction: {
-          type: "deposit",
-          amount,
-          timestamp: new Date().toISOString(),
-          status: "completed",
-        },
+        transaction,
       })
     } catch (error) {
       logger.error("Deposit error:", error)
-      res.status(500).json({ error: "Failed to process deposit" })
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to process deposit" 
+      })
     }
-  },
+  }
 )
 
 // Request withdrawal
 router.post(
-  "/withdrawal-request",
+  "/withdraw",
   [
     authenticateToken,
-    requireUserOrAdmin,
     body("amount").isFloat({ min: 0.01 }),
     body("method").isIn(["bank_transfer", "card", "crypto"]),
     body("details").isObject(),
-    body("reason").optional().trim(),
   ],
-  async (req: AuthRequest, res) => {
+  async (req, res) => {
     try {
       const errors = validationResult(req)
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() })
       }
 
-      const user = req.user
-      if (!user?.loginId) {
-        return res.status(404).json({ error: "No MT5 account found" })
-      }
+      const { amount, method, details } = req.body
+      const userId = req.user?.id
 
-      const { amount, method, details, reason } = req.body
-
-      // Get current account balance to validate withdrawal
-      const accountInfo = await mt5Service.getUserInfo(user.loginId)
-      if (accountInfo.balance < amount) {
-        return res.status(400).json({ error: "Insufficient balance" })
-      }
-
-      // Create withdrawal request (in production, store in database)
+      // Mock withdrawal request - in production, create withdrawal request for admin approval
       const withdrawalRequest = {
-        id: Date.now().toString(),
-        userId: user.id,
-        loginId: user.loginId,
-        amount,
+        id: `wd_${Date.now()}`,
+        userId,
+        amount: Number.parseFloat(amount),
         method,
         details,
-        reason,
         status: "pending",
         requestedAt: new Date().toISOString(),
       }
 
-      // TODO: Store in database
-      // await createWithdrawalRequest(withdrawalRequest)
-
-      logger.info("Withdrawal request created:", {
-        userId: user.id,
-        loginId: user.loginId,
-        amount,
-        method,
-      })
+      logger.info("Withdrawal request created:", { userId, amount, method })
 
       res.status(201).json({
+        success: true,
         message: "Withdrawal request submitted successfully",
         request: withdrawalRequest,
       })
     } catch (error) {
       logger.error("Withdrawal request error:", error)
-      res.status(500).json({ error: "Failed to create withdrawal request" })
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to create withdrawal request" 
+      })
     }
-  },
+  }
 )
 
 // Get transaction history
-router.get(
-  "/history",
-  [
-    authenticateToken,
-    requireUserOrAdmin,
-    query("from").optional().isISO8601(),
-    query("to").optional().isISO8601(),
-    query("type").optional().isIn(["deposit", "withdrawal", "all"]),
-  ],
-  async (req: AuthRequest, res) => {
-    try {
-      const user = req.user
-      if (!user?.loginId) {
-        return res.status(404).json({ error: "No MT5 account found" })
-      }
-
-      const { from, to, type } = req.query
-
-      // Get trade history from MT5 (includes balance operations)
-      const historyData = {
-        loginId: user.loginId,
-        from: from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // Last 30 days
-        to: to || new Date().toISOString(),
-      }
-
-      const history = await mt5Service.getTradeHistory(historyData)
-
-      // Filter balance operations only
-      const transactions = history.filter((item: any) => {
-        if (type === "deposit") return item.type === "DEAL_TYPE_BALANCE" && item.profit > 0
-        if (type === "withdrawal") return item.type === "DEAL_TYPE_BALANCE" && item.profit < 0
-        return item.type === "DEAL_TYPE_BALANCE"
-      })
-
-      res.json(transactions)
-    } catch (error) {
-      logger.error("Get transaction history error:", error)
-      res.status(500).json({ error: "Failed to get transaction history" })
-    }
-  },
-)
-
-// Get withdrawal requests
-router.get("/withdrawal-requests", [authenticateToken, requireUserOrAdmin], async (req: AuthRequest, res) => {
+router.get("/history", authenticateToken, async (req, res) => {
   try {
-    const user = req.user
+    const userId = req.user?.id
 
-    // TODO: Get from database
-    // const requests = await getWithdrawalRequestsByUser(user.id)
+    // Mock transaction history - in production, get from MT5 and database
+    const mockHistory = [
+      {
+        id: "txn_1234567890",
+        type: "deposit",
+        amount: 100,
+        status: "completed",
+        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        description: "Stripe deposit",
+      },
+      {
+        id: "txn_0987654321",
+        type: "deposit",
+        amount: 250,
+        status: "completed",
+        timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+        description: "Stripe deposit",
+      },
+    ]
 
-    // Mock data for now
-    const requests = []
+    logger.info("Transaction history requested:", { userId })
 
-    res.json(requests)
+    res.json({
+      success: true,
+      data: mockHistory,
+    })
   } catch (error) {
-    logger.error("Get withdrawal requests error:", error)
-    res.status(500).json({ error: "Failed to get withdrawal requests" })
+    logger.error("Get transaction history error:", error)
+    res.status(500).json({ 
+      success: false, 
+      error: "Failed to get transaction history" 
+    })
   }
 })
 
-export { router as balanceRoutes }
+export default router
